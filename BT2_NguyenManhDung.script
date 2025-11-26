@@ -1,0 +1,109 @@
+# ===== 1. Khai báo biến =====
+loops = 20
+count = 0
+set_tcp(p[0, 0, 0.1, 0, 0, 0]) 
+
+# --- CẤU HÌNH CHẾ ĐỘ CHẠY ---
+# True = Chế độ chạy thử (Tự động giả lập DI 1 sau 1s)
+# False = Chế độ chạy thật (Bắt buộc phải có điện vào DI 1 mới chạy)
+IS_SIMULATION = True 
+
+Home    = [0, -1.57, 0, -1.57, 0, 0]
+P_app   = p[0.330,  -0.030, 0.250, 0, 3.14, 0]
+P1 = p[0.330, -0.030, 0.200, 0, 3.14, 0]
+P2 = p[0.370, -0.030, 0.200, 0, 3.14, 0]
+P3 = p[0.370,  0.030, 0.200, 0, 3.14, 0]
+P4 = p[0.330,  0.030, 0.200, 0, 3.14, 0]
+
+while (count < loops):
+    if (count == 0): 
+        textmsg("-> BAT DAU LAM VIEC!")
+    end
+    # Reset đèn báo
+    set_digital_out(2, False) 
+    textmsg("DANG CHO TIN HIEU DI[1]...")
+
+    # XỬ LÝ TÍN HIỆU
+    # Logic: Chờ DI 1 (ON) HOẶC (Đang giả lập và đã đợi 1s)
+   
+    timer_wait = 0
+    while (get_digital_in(1) == False):
+        
+        # Nếu đang là chế độ Test, thì tự đếm thời gian
+        if (IS_SIMULATION == True):
+            sleep(0.1)
+            timer_wait = timer_wait + 0.1
+            
+            # Nếu đã đợi quá 1 giây -> Tự động coi như có tín hiệu (Break vòng lặp)
+            if (timer_wait >= 1.0):
+                textmsg("-> [AUTO] Gia lap tin hieu DI 1 kich hoat!")
+                break 
+            end
+        else:
+            # Nếu là chạy manual thì chờ tín hiệu
+            sync()
+        end
+    end
+    
+    # ====================================================
+    textmsg("VAT "+ to_str(count + 1) +" DA DEN VI TRI CHECK!")
+    movej(Home, a=0.5, v=0.5)
+    movej(P_app, a=0.5, v=0.5)
+
+    # Chụp ảnh 4 điểm
+    movel(P1, a=0.5, v=0.3) 
+    textmsg("Chup anh tai vi tri P1")
+    set_digital_out(0, True)  
+    sleep(1)                
+    set_digital_out(0, False) 
+    sleep(0.1) 
+
+    movel(P2, a=0.5, v=0.3)
+    textmsg("Chup anh tai vi tri P2")
+    set_digital_out(0, True)
+    sleep(1)
+    set_digital_out(0, False)
+    sleep(0.1)
+
+    movel(P3, a=0.5, v=0.3)
+    textmsg("Chup anh tai vi tri P3")
+    set_digital_out(0, True)
+    sleep(1)
+    set_digital_out(0, False)
+    sleep(0.1)
+
+    movel(P4, a=0.5, v=0.3)
+    textmsg("Chup anh tai vi tri P4")
+    set_digital_out(0, True)
+    sleep(1)
+    set_digital_out(0, False)
+    sleep(0.1)
+    # --- BÁO XONG ---
+    if (random() < 0.7):
+        textmsg("DA HOAN THANH SAN PHAM THU " + to_str(count + 1) + ": KET QUA: OK")
+    else:
+        textmsg("DA HOAN THANH SAN PHAM THU " + to_str(count + 1) + ": KET QUA: LOI")
+    end
+    movej(P_app, a=0.5, v=0.3)
+    movej(Home,  a=0.5, v=0.5)
+    sleep(2)
+    set_digital_out(2, True) 
+    timer_reset = 0
+    # Chừng nào DI 1 còn sáng (nghĩa là vật chưa đi ra)
+    while (get_digital_in(1) == True):
+         if (IS_SIMULATION == True):
+            sleep(0.1)
+            timer_reset = timer_reset + 0.1
+            if (timer_reset >= 1.0):
+                break 
+            end
+         else:
+            sync()
+         end
+    end
+    count = count + 1
+    if (count == loops):
+         textmsg("HOAN THANH CHUONG TRINH!")
+         halt
+    end 
+end
