@@ -12,7 +12,7 @@ cfg.v_lin_default  = 300;    % mm/s cho MoveL
 cfg.a_lin_default  = 1200;   % mm/s^2 cho MoveL
 cfg.vJ_default     = 0.8;    % rad/s cho MoveJ
 cfg.aJ_default     = 2.0;    % rad/s^2 cho MoveJ
-cfg.T_wait         = 0;    % thời gian dừng mặc định nếu WP không ghi
+cfg.T_wait         = 0;      % thời gian dừng mặc định nếu WP không ghi
 cfg.T_min_L        = 0.3;    % Tmin cho MoveL
 cfg.T_min_J        = 0.3;    % Tmin cho MoveJ
 
@@ -189,11 +189,18 @@ function [q_traj, qd_traj, qdd_traj] = plan_path_with_home_wp(WP, q_home, cfg, g
     TOL_POS = 5;   % mm cho sai số TCP
     q_task = [];
 
+    % ===== CHỜ Ở HOME NẾU WAYPOINT ĐẦU TIÊN LÀ HOME VÀ CÓ T_wait > 0 =====
+    [~, ~, ~, mode1, T_wait1] = unpack_wp(WP(1), cfg);
+    if strcmpi(mode1, 'HOME') && T_wait1 > 0
+        N_WAIT = round(T_wait1 / dt);
+        q_task = [q_task; repmat(q_home, N_WAIT, 1)];
+    end
+
     for i = 1:(n_wp - 1)
         wp_start = WP(i);
         wp_end   = WP(i+1);
 
-        [P_start, ~,      ~,      mode_start, T_wait_start] = unpack_wp(wp_start, cfg);
+        [P_start, ~,      ~,      mode_start, T_wait_start] = unpack_wp(wp_start, cfg); %#ok<NASGU>
         [P_end,   v_end,  a_end,  mode_end,   T_wait_end  ] = unpack_wp(wp_end,   cfg);
 
         mode_start = upper(mode_start);
@@ -210,7 +217,7 @@ function [q_traj, qd_traj, qdd_traj] = plan_path_with_home_wp(WP, q_home, cfg, g
 
         % ===== CÁC TRƯỜNG HỢP ĐẶC BIỆT CÓ HOME =====
         if is_home_start && is_home_end
-            % HOME -> HOME: đứng im tại q_home
+            % HOME -> HOME: đứng im tại q_home (theo T_wait_end)
             N_WAIT = round(T_wait_end / dt);
             q_seg  = repmat(q_home, N_WAIT, 1);
 
@@ -449,7 +456,7 @@ function q = ik_point(P, geom)
         phi = phi_up;
     else
         k = (z_wrist - 350)/(650 - 350);
-        k = 3*k^2 - 2*k^3;  % easing
+        k = 3*k^2 - 2*k^3;  % easing (smoothstep)
         phi = k * phi_up;
     end
 
@@ -644,6 +651,7 @@ function bad = is_forbidden_tcp(P_xyz)
 
     bad = (in_xy_box && low_z) || below0;
 end
+
 % =====================================================================
 % CHECK GIỚI HẠN KHỚP
 % =====================================================================
